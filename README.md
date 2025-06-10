@@ -1,8 +1,6 @@
 # ✨ Full Stack Realtime Chat App ✨
 
-![Demo App](/frontend/public/screenshot-for-readme.png)
-
-[Video Tutorial on Youtube](https://youtu.be/ntKkVrQqBYY)
+![Demo App]("C:\Users\SUSMITA KUMARI\Downloads\Telegram Desktop\photo_2025-06-10_21-23-29.jpg")
 
 Highlights:
 
@@ -11,32 +9,4 @@ Highlights:
 - 👾 Real-time messaging with Socket.io
 - 🚀 Online user status
 - 👌 Global state management with Zustand
-- 🐞 Error handling both on the server and on the client
-- ⭐ At the end Deployment like a pro for FREE!
-- ⏳ And much more!
-
-### Setup .env file
-
-```js
-MONGODB_URI=...
-PORT=5001
-JWT_SECRET=...
-
-CLOUDINARY_CLOUD_NAME=...
-CLOUDINARY_API_KEY=...
-CLOUDINARY_API_SECRET=...
-
-NODE_ENV=development
-```
-
-### Build the app
-
-```shell
-npm run build
-```
-
-### Start the app
-
-```shell
-npm start
-```
+- 🐞 Error handling both on the server and on the client.
