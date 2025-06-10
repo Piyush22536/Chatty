@@ -1,6 +1,6 @@
 # ✨ Full Stack Realtime Chat App ✨
 
-![Demo App]("C:\Users\SUSMITA KUMARI\Downloads\Telegram Desktop\photo_2025-06-10_21-23-29.jpg")
+![image](https://github.com/user-attachments/assets/2f1a1295-e935-49f3-a991-0e3760bd91ff)
 
 Highlights:
 
