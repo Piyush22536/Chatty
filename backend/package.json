@@ -20,6 +20,10 @@
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.1",
+<<<<<<< HEAD
+=======
+    "redis": "^5.11.0",
+>>>>>>> main
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

@@ -10,6 +10,10 @@ import { connectDB } from "./lib/db.js";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
+<<<<<<< HEAD
+=======
+import { connectRedis } from "./lib/redis.js";
+>>>>>>> main
 
 dotenv.config();
 
@@ -39,4 +43,9 @@ if (process.env.NODE_ENV === "production") {
 server.listen(PORT, () => {
   console.log("server is running on PORT:" + PORT);
   connectDB();
+<<<<<<< HEAD
+=======
+  connectRedis();
+
+>>>>>>> main
 });
