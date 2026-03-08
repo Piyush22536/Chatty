@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "worker": "node src/queue/message.worker.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "bullmq": "^5.70.4",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -20,10 +22,7 @@
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.1",
-<<<<<<< HEAD
-=======
     "redis": "^5.11.0",
->>>>>>> main
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
