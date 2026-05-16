@@ -1,4 +1,4 @@
-# ✨ Full Stack Realtime Chat App ✨
+# ✨ Full Stack, Scalable Real-time Chat App ✨
 
 ![image](https://github.com/user-attachments/assets/2f1a1295-e935-49f3-a991-0e3760bd91ff)
 
