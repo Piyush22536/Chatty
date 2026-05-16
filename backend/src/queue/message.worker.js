@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import Message from "../models/message.model.js";
-import redisClient from "../lib/redis.js";
+import redisClient, { bullMQConnection } from "../lib/redis.js";
 import { pubClient } from "../lib/pubsub.js";
 
 const worker = new Worker(
@@ -17,12 +17,9 @@ const worker = new Worker(
       senderId < receiverId
         ? `chat:${senderId}:${receiverId}`
         : `chat:${receiverId}:${senderId}`;
-    await redisClient.del(chatKey);
+    await redisClient.del(chatKey); // now matches the key used in the controller
 
-    // 3. Publish to Redis Pub/Sub.
-    //    ALL server instances are subscribed to "chat:new-message".
-    //    Each server checks its local userSocketMap — whichever server
-    //    has the receiver connected will emit the socket event.
+    // 3. Publish to Redis Pub/Sub — all server instances receive this
     await pubClient.publish(
       "chat:new-message",
       JSON.stringify({
@@ -31,7 +28,7 @@ const worker = new Worker(
       })
     );
   },
-  { connection: redisClient }
+  { connection: bullMQConnection } // ioredis options
 );
 
 worker.on("completed", (job) => {

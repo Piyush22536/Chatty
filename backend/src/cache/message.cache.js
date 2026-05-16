@@ -1,14 +1,15 @@
 import redisClient from "../lib/redis.js";
 
-export const getCachedMessages = async (chatId) => {
-  const data = await redisClient.get(`chat:${chatId}`);
+
+export const getCachedMessages = async (chatKey) => {
+  const data = await redisClient.get(chatKey);
   return data ? JSON.parse(data) : null;
 };
 
-export const setCachedMessages = async (chatId, messages) => {
+export const setCachedMessages = async (chatKey, messages) => {
   await redisClient.set(
-    `chat:${chatId}`,
+    chatKey,
     JSON.stringify(messages),
-    { EX: 60 }   // cache expires in 60 seconds
+    { EX: 60 } // 60 sec expiry
   );
 };

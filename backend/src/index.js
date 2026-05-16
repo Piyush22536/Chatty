@@ -35,5 +35,6 @@ server.listen(PORT, async () => {
   connectDB();
   await connectRedis();
   await connectPubSub();        // connect pub + sub clients
+  await clearStaleOnlineUsers(); // remove leftover entries from a previous crash
   await setupPubSubListeners(); // subscribe to chat:new-message channel
 });

@@ -1,7 +1,7 @@
 import express from "express";
 import { checkAuth, login, logout, signup, updateProfile } from "../controllers/auth.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
-import { tokenBucketLimiter } from "../middleware/tokenBucket.middleware.js";
+import { tokenBucketLimiter } from "../middleware/rateLimiter.middleware.js";
 const router = express.Router();
 
 router.post("/signup", tokenBucketLimiter, signup);
