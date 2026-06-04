@@ -1,40 +1,29 @@
+// backend/src/queue/message.worker.js
 import { Worker } from "bullmq";
-import Message from "../models/message.model.js";
-import redisClient, { bullMQConnection } from "../lib/redis.js";
-import { pubClient } from "../lib/pubsub.js";
+import { bullMQConnection } from "../lib/redis.js";
+
+//  Put your real notification logic here:
+const sendNotification = async ({ senderId, receiverId, messageId, text }) => {
+  // Example placeholder — replace with your actual notification service
+  console.log(
+    `[Notification] User ${senderId} sent a message to ${receiverId}: "${text?.slice(0, 50)}"`
+  );
+  // await firebaseAdmin.messaging().send({ ... });
+  // await sendgrid.send({ ... });
+};
 
 const worker = new Worker(
-  "message-queue",
+  "notification-queue",
   async (job) => {
-    const { senderId, receiverId, text, image } = job.data;
-
-    // 1. Save to MongoDB
-    const newMessage = new Message({ senderId, receiverId, text, image });
-    await newMessage.save();
-
-    // 2. Invalidate the Redis message cache for this chat
-    const chatKey =
-      senderId < receiverId
-        ? `chat:${senderId}:${receiverId}`
-        : `chat:${receiverId}:${senderId}`;
-    await redisClient.del(chatKey); // now matches the key used in the controller
-
-    // 3. Publish to Redis Pub/Sub — all server instances receive this
-    await pubClient.publish(
-      "chat:new-message",
-      JSON.stringify({
-        receiverId: receiverId.toString(),
-        message: newMessage,
-      })
-    );
+    await sendNotification(job.data);
   },
-  { connection: bullMQConnection } // ioredis options
+  { connection: bullMQConnection }
 );
 
 worker.on("completed", (job) => {
-  console.log("Message job completed:", job.id);
+  console.log("Notification job completed:", job.id);
 });
 
 worker.on("failed", (job, err) => {
-  console.error("Message job failed:", job.id, err.message);
+  console.error("Notification job failed:", job.id, err.message);
 });
