@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "worker": "node src/queue/message.worker.js"
+    "start:worker": "node src/worker.js"
   },
   "keywords": [],
   "author": "",
