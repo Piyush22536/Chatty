@@ -1,4 +1,6 @@
-# ChatApp
+![image](https://github.com/user-attachments/assets/2f1a1295-e935-49f3-a991-0e3760bd91ff)
+
+# Scalable ChatApp
 
 A full-stack real-time chat application built with React, Node.js, Socket.IO, Redis, MongoDB, and BullMQ. Supports instant messaging, image sharing, in-app notifications, online presence, and is designed to scale horizontally across multiple server instances.
 
