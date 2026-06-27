@@ -5,6 +5,13 @@
 A full-stack real-time chat application built with React, Node.js, Socket.IO, Redis, MongoDB, and BullMQ. Supports instant messaging, image sharing, in-app notifications, online presence, and is designed to scale horizontally across multiple server instances.
 
 ---
+## 🚀 Demo Video
+
+🎥 **Watch Chatty in action**
+
+### 📦 Chatty v1.0.0
+https://github.com/Piyush22536/Chatty/releases/tag/v1.0.0
+
 
 ## Table of contents
 
