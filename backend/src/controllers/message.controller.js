@@ -3,7 +3,7 @@ import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getCachedMessages, setCachedMessages } from "../cache/message.cache.js";
 import redisClient from "../lib/redis.js";
-import { pubClient } from "../lib/pubsub.js";
+import { getPubClient } from "../lib/pubsub.js";
 import { notificationQueue } from "../queue/notification.queue.js";
 
 // Canonical cache key — same order regardless of who is sender/receiver
@@ -98,7 +98,7 @@ export const sendMessage = async (req, res) => {
 
     // 4. Publish real-time event (critical — receiver won't get instant
     //    delivery if this fails, so we keep it in the awaited path)
-    await pubClient.publish(
+    await getPubClient().publish(
       "chat:new-message",
       JSON.stringify({ receiverId: receiverId.toString(), message: newMessage })
     );

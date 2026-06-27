@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import Notification from "../models/notification.model.js";
 import { bullMQConnection } from "../lib/redis.js";
-import { pubClient } from "../lib/pubsub.js";
+import { getPubClient } from "../lib/pubsub.js";
 
 // ---------------------------------------------------------------------------
 // Job handler: "send-notification"
@@ -41,7 +41,7 @@ async function handleSendNotification(job) {
   };
 
   // 3. Publish to all server instances — the one holding the socket emits it
-  await pubClient.publish(
+  await getPubClient().publish(
     "notification:new",
     JSON.stringify({ recipientId, notification: payload })
   );

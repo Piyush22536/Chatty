@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
-import { subClient } from "./pubsub.js";
+import { getSubClient } from "./pubsub.js";
 import redisClient from "./redis.js";
 
 const app = express();
@@ -67,7 +67,7 @@ io.on("connection", async (socket) => {
 // ---------------------------------------------------------------------------
 export async function setupPubSubListeners() {
   // Channel 1: chat messages
-  await subClient.subscribe("chat:new-message", (raw) => {
+  await getSubClient().subscribe("chat:new-message", (raw) => {
     const { receiverId, message } = JSON.parse(raw);
     const socketId = userSocketMap[receiverId];
     if (socketId) {
@@ -76,7 +76,7 @@ export async function setupPubSubListeners() {
   });
 
   // Channel 2: notifications
-  await subClient.subscribe("notification:new", (raw) => {
+  await getSubClient().subscribe("notification:new", (raw) => {
     const { recipientId, notification } = JSON.parse(raw);
     const socketId = userSocketMap[recipientId];
     if (socketId) {

@@ -1,5 +1,7 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
@@ -12,8 +14,6 @@ import { app, server, setupPubSubListeners, clearStaleOnlineUsers } from "./lib/
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import notificationRoutes from "./routes/notification.route.js";
-
-dotenv.config();
 
 const PORT = process.env.PORT;
 const __dirname = path.resolve();
@@ -40,5 +40,4 @@ server.listen(PORT, async () => {
   await connectPubSub();
   await clearStaleOnlineUsers();
   await setupPubSubListeners();
-  // Worker runs as a SEPARATE process: node src/worker.js
 });
