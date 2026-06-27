@@ -1,6 +1,6 @@
-![image](https://github.com/user-attachments/assets/2f1a1295-e935-49f3-a991-0e3760bd91ff)
+![Chatty banner](https://github.com/user-attachments/assets/2f1a1295-e935-49f3-a991-0e3760bd91ff)
 
-# Scalable ChatApp
+# Chatty
 
 A full-stack real-time chat application built with React, Node.js, Socket.IO, Redis, MongoDB, and BullMQ. Supports instant messaging, image sharing, in-app notifications, online presence, and is designed to scale horizontally across multiple server instances.
 
@@ -24,14 +24,14 @@ A full-stack real-time chat application built with React, Node.js, Socket.IO, Re
 ## Features
 
 - **Real-time messaging** — instant delivery via Socket.IO and Redis Pub/Sub
-- **Image support** — send images that are uploaded asynchronously to Cloudinary
+- **Image support** — send images uploaded asynchronously to Cloudinary
 - **In-app notifications** — bell badge, dropdown panel, and toast alerts for incoming messages
 - **Online presence** — see which users are currently online
 - **Message caching** — Redis cache with write-through invalidation for fast chat history loads
 - **Pagination** — cursor-based message loading (50 per page)
 - **Rate limiting** — token bucket algorithm per user (messages) and per IP (auth)
 - **JWT authentication** — HTTP-only cookie, 7-day expiry
-- **Horizontal scaling** — two independent processes (server + worker) that share state via Redis
+- **Horizontal scaling** — multiple server instances share state through Redis; no sticky sessions required
 
 ---
 
@@ -39,70 +39,51 @@ A full-stack real-time chat application built with React, Node.js, Socket.IO, Re
 
 The app runs as **two separate processes** that communicate through Redis and BullMQ.
 
+| Layer | Technology | Role |
+|---|---|---|
+| Frontend | React 18, Zustand, Socket.IO client | UI, state, real-time |
+| Server | Node.js, Express, Socket.IO | API, WebSocket gateway |
+| Database | MongoDB Atlas | Users, messages, notifications |
+| Cache & pub/sub | Redis (node-redis) | Cross-instance delivery, rate limiting, online user set |
+| Queue | BullMQ (ioredis) | Async notification processing |
+| Image storage | Cloudinary | Image upload and CDN |
+| Auth | JWT, bcryptjs | HTTP-only cookie, 7-day expiry |
+
+### Request flow
+
+1. **React client** connects via Socket.IO (WebSocket) and REST (Axios) to whichever server instance it hits.
+2. **Express server** handles auth, message persistence, and rate limiting. Each instance keeps a local `userSocketMap` of sockets connected *to that instance only*.
+3. When a message is sent, the server publishes to the `chat:new-message` Redis channel. Every instance receives the event — whichever holds the recipient's socket delivers it.
+4. The server also enqueues a `send-notification` BullMQ job. The worker process picks it up, saves to MongoDB, and publishes to `notification:new`.
+
+### Message send flow
+
 ```
-┌─────────────────────────────────────────────┐
-│                  Client                      │
-│         React + Zustand + Socket.IO          │
-└──────────────┬───────────────┬──────────────┘
-               │ HTTP REST     │ WebSocket
-               ▼               ▼
-┌──────────────────────────────────────────────┐
-│           Process 1 — HTTP server            │
-│   Express · Socket.IO · Pub/Sub listener     │
-│   JWT auth · Token bucket rate limiter       │
-└──────────┬───────────────────────────────────┘
-           │ BullMQ enqueue (fire-and-forget)
-           ▼
-┌──────────────────────────────────────────────┐
-│           Process 2 — Worker                 │
-│   Cloudinary upload · MongoDB save           │
-│   Redis cache invalidation · Pub/Sub publish │
-│   Notification persist · FCM / email         │
-└──────────────────────────────────────────────┘
-           │ Both processes share:
-           ▼
-┌────────────────────────────────────────────────────────────┐
-│                       Data layer                            │
-│  MongoDB          Redis              BullMQ queue           │
-│  users            message cache      notification-queue     │
-│  messages         online_users set                          │
-│  notifications    rate limit buckets                        │
-│                   pub/sub channels                          │
-│                     chat:new-message                        │
-│                     notification:new                        │
-└────────────────────────────────────────────────────────────┘
+Client POST /api/messages/send/:id
+  → JWT auth + token bucket rate limiter
+  → Cloudinary upload (if image)
+  → MongoDB save
+  → Redis cache invalidation
+  → publish chat:new-message
+      → every server instance's sub client receives
+      → instance holding receiver's socket emits newMessage
+  → BullMQ enqueue send-notification (fire-and-forget)
+      → worker saves Notification to MongoDB
+      → worker publishes notification:new
+      → instance holding recipient's socket emits notification
+      → bell badge increments + toast appears
 ```
 
-**Message send flow:**
+### Cache read flow
 
-1. Client `POST /api/messages/send/:id`
-2. JWT auth + token bucket rate limiter
-3. Controller uploads image to Cloudinary, saves message to MongoDB, invalidates Redis cache, publishes on `chat:new-message`
-4. Sub client on every server instance receives the publish — whichever instance holds the receiver's socket emits `newMessage`
-5. Controller fire-and-forgets a `send-notification` job into BullMQ
-6. Worker picks up the job, saves a `Notification` document, publishes on `notification:new`
-7. Sub client emits `notification` to the recipient's socket → bell badge increments + toast appears
-
-**Cache read flow:**
-
-1. `GET /api/messages/:id` checks Redis first
-2. Cache hit → return immediately (no TTL — valid until next write invalidates it)
-3. Cache miss → query MongoDB with `.limit(50).sort({ _id: -1 })`, store result, return
-
----
-
-## Tech stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Zustand, Socket.IO client, DaisyUI, Tailwind CSS, Lucide icons |
-| Backend | Node.js, Express, Socket.IO server |
-| Database | MongoDB with Mongoose |
-| Cache & pub/sub | Redis (node-redis) |
-| Queue | BullMQ (ioredis internally) |
-| Image storage | Cloudinary |
-| Auth | JSON Web Tokens, bcryptjs |
-| Notifications | BullMQ worker (pluggable: FCM, APNs, SendGrid) |
+```
+GET /api/messages/:id
+  → check Redis key chat:<smallerId>:<largerId>
+  → HIT  → return immediately
+  → MISS → query MongoDB (.limit(50).sort({ _id: -1 }))
+         → store in Redis (no TTL — valid until next write invalidates)
+         → return
+```
 
 ---
 
@@ -113,37 +94,38 @@ root/
 ├── backend/
 │   └── src/
 │       ├── cache/
-│       │   └── message.cache.js          # Redis get/set/invalidate helpers
+│       │   └── message.cache.js           # Redis get/set/invalidate helpers
 │       ├── controllers/
-│       │   ├── auth.controller.js         # signup, login, logout, updateProfile
-│       │   ├── message.controller.js      # getUsersForSidebar, getMessages, sendMessage
-│       │   └── notification.controller.js # getNotifications, getUnreadCount, markAsRead, markAllAsRead
+│       │   ├── auth.controller.js          # signup, login, logout, updateProfile
+│       │   ├── message.controller.js       # getUsersForSidebar, getMessages, sendMessage
+│       │   └── notifications.controller.js # getNotifications, unreadCount, markAsRead
 │       ├── lib/
-│       │   ├── cloudinary.js              # Cloudinary SDK config
-│       │   ├── db.js                      # Mongoose connection
-│       │   ├── pubsub.js                  # Redis pub + sub clients
-│       │   ├── redis.js                   # Redis cache client + BullMQ connection options
-│       │   ├── socket.js                  # Socket.IO server, pub/sub listeners, online users
-│       │   └── utils.js                   # JWT generation
+│       │   ├── cloudinary.js               # Cloudinary SDK config
+│       │   ├── db.js                       # Mongoose connection
+│       │   ├── pubsub.js                   # Redis pub + sub clients (lazy init)
+│       │   ├── redis.js                    # Redis cache client + BullMQ connection
+│       │   ├── socket.js                   # Socket.IO server, pub/sub listeners
+│       │   └── utils.js                    # JWT generation
 │       ├── middleware/
-│       │   ├── auth.middleware.js          # protectRoute (JWT verify)
-│       │   ├── loginRateLimiter.js         # token bucket — 5 attempts / 15 min per IP
-│       │   └── rateLimiter.middleware.js   # token bucket — 10 messages / sec per user
+│       │   ├── auth.middleware.js           # protectRoute — JWT verify
+│       │   ├── loginRateLimiter.js          # 5 attempts / 15 min per IP
+│       │   └── rateLimiter.middleware.js    # 10 messages / sec per user
 │       ├── models/
 │       │   ├── message.model.js
 │       │   ├── notification.model.js
 │       │   └── user.model.js
 │       ├── queue/
-│       │   ├── notification.queue.js       # BullMQ Queue registration
-│       │   └── notification.worker.js      # BullMQ Worker — save + pub/sub publish
+│       │   ├── notification.queue.js        # BullMQ Queue registration
+│       │   └── notification.worker.js       # BullMQ Worker — save + publish
 │       ├── routes/
 │       │   ├── auth.route.js
 │       │   ├── message.route.js
 │       │   └── notification.route.js
 │       ├── seeds/
-│       │   └── user.seed.js               # Seed 15 demo users
-│       ├── index.js                        # Express app entry point (HTTP server process)
-│       └── worker.js                       # Worker entry point (separate process)
+│       │   └── user.seed.js                # Seed 15 demo users
+│       ├── env.js                           # dotenv preload (--import flag)
+│       ├── index.js                         # HTTP server entry point
+│       └── worker.js                        # BullMQ worker entry point
 │
 └── frontend/
     └── src/
@@ -151,11 +133,11 @@ root/
         │   ├── ChatContainer.jsx
         │   ├── MessageInput.jsx
         │   ├── Navbar.jsx
-        │   ├── NotificationBell.jsx        # Bell icon, badge, dropdown
+        │   ├── NotificationBell.jsx         # Bell icon, badge, dropdown
         │   ├── Sidebar.jsx
         │   └── ...
         ├── hooks/
-        │   └── useNotifications.js         # Socket listener + toast on incoming notif
+        │   └── useNotifications.jsx         # Socket listener + toast
         ├── lib/
         │   └── axios.js
         ├── pages/
@@ -165,45 +147,96 @@ root/
         │   ├── SettingsPage.jsx
         │   └── SignUpPage.jsx
         ├── store/
-        │   ├── useAuthStore.js             # Auth state + socket connect/disconnect
-        │   ├── useChatStore.js             # Messages, users, socket subscriptions
-        │   ├── useNotificationStore.js     # Notifications, unread count, mark-read
+        │   ├── useAuthStore.js              # Auth state + socket lifecycle
+        │   ├── useChatStore.js              # Messages, users, socket subscriptions
+        │   ├── useNotificationStore.js      # Notifications, unread count, mark-read
         │   └── useThemeStore.js
         └── App.jsx
 ```
 
+---
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20+
+- MongoDB Atlas account — [cloud.mongodb.com](https://cloud.mongodb.com)
+- Redis Cloud account — [redis.io/try-free](https://redis.io/try-free) or [upstash.com](https://upstash.com)
+- Cloudinary account — [cloudinary.com](https://cloudinary.com)
+
+### Install
+
+```bash
+git clone https://github.com/Piyush22536/Chatty.git
+cd Chatty
+
+cd backend && npm install
+cd ../frontend && npm install
+```
+
+---
+
+## Environment variables
+
+Create `backend/.env`:
+
+```env
+# Server
+PORT=5001
+NODE_ENV=development
+
+# MongoDB
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/chatty?retryWrites=true&w=majority
+
+# JWT
+JWT_SECRET=your_long_random_secret_here
+
+# Redis
+REDIS_URL=redis://default:<password>@<host>:<port>
+REDIS_HOST=<host>
+REDIS_PORT=<port>
+REDIS_PASSWORD=<password>
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+---
 
 ## Running the app
 
-The backend runs as **two separate processes**. Both must be running for the full feature set to work.
+The backend runs as **two separate processes**. Both must be running for full functionality.
 
 ```bash
-# Terminal 1 — HTTP server
+# Terminal 1 — HTTP server (port 5001)
 cd backend
-npm run start
+npm run dev
 
-# Terminal 2 — BullMQ worker (notifications)
+# Terminal 2 — BullMQ worker
 cd backend
 npm run start:worker
 
-# Terminal 3 — Frontend dev server
+# Terminal 3 — Frontend dev server (port 5173)
 cd frontend
 npm run dev
 ```
 
-Add these scripts to `backend/package.json`:
+`backend/package.json` scripts:
 
 ```json
 "scripts": {
-  "start": "node src/index.js",
-  "start:worker": "node src/worker.js",
-  "dev": "nodemon src/index.js",
-  "dev:worker": "nodemon src/worker.js",
-  "seed": "node src/seeds/user.seed.js"
+  "dev":          "nodemon --import ./src/env.js src/index.js",
+  "dev:2":        "cross-env PORT=5002 nodemon --import ./src/env.js src/index.js",
+  "start":        "node --import ./src/env.js src/index.js",
+  "start:worker": "node --import ./src/env.js src/worker.js",
+  "seed":         "node --import ./src/env.js src/seeds/user.seed.js"
 }
 ```
 
-Frontend runs at `http://localhost:5173`, backend at `http://localhost:5001`.
+Open `http://localhost:5173` in your browser.
 
 ---
 
@@ -240,9 +273,9 @@ Frontend runs at `http://localhost:5173`, backend at `http://localhost:5001`.
 
 | Event | Direction | Payload | Description |
 |---|---|---|---|
-| `getOnlineUsers` | Server → all clients | `string[]` (userIds) | Online user list update |
+| `getOnlineUsers` | Server → all | `string[]` userIds | Online user list update |
 | `newMessage` | Server → receiver | `Message` object | Real-time message delivery |
-| `notification` | Server → recipient | `Notification` object | In-app notification delivery |
+| `notification` | Server → recipient | `Notification` object | In-app notification |
 
 ---
 
@@ -252,32 +285,52 @@ Frontend runs at `http://localhost:5173`, backend at `http://localhost:5001`.
 
 Two independent limiters backed by Redis:
 
-- **Login / signup** — 5 tokens per IP, refills at 1 token per 3 minutes. Keyed by `bucket:login:<ip>`.
-- **Send message** — 10 tokens per user, refills at 1 token per second. Keyed by `bucket:<userId>`.
+- **Login / signup** — 5 tokens per IP, refills at 1 token per 3 minutes. Key: `bucket:login:<ip>`
+- **Send message** — 10 tokens per user, refills at 1 token per second. Key: `bucket:<userId>`
 
-Each request reads the bucket from Redis, calculates tokens earned since `lastRefill`, consumes one token, and writes back atomically. If tokens < 1, returns `429 Too Many Requests`.
+Each request reads the bucket from Redis, calculates tokens earned since `lastRefill`, consumes one token, and writes back. Returns `429 Too Many Requests` when tokens < 1.
 
 ### Message cache — write-through invalidation
 
-- On `GET /messages/:id` (first page, no cursor): check `chat:<smallerId>:<largerId>` in Redis. Hit → return. Miss → query MongoDB, store with no TTL.
-- On `sendMessage`: after saving to MongoDB, immediately `DEL` the cache key. The next `GET` repopulates it from MongoDB with fresh data.
-- No TTL means no stale-read window. The cache is valid until exactly the moment a new message is written.
+- **Read**: `GET /messages/:id` checks `chat:<smallerId>:<largerId>` in Redis first. Hit → return immediately. Miss → query MongoDB, store, return.
+- **Write**: after saving to MongoDB, `DEL` the cache key. No TTL — the cache is valid until exactly the moment a new message is written, eliminating any stale-read window.
 
 ### Pub/Sub — multi-instance socket delivery
 
-Redis Pub/Sub solves the problem of delivering a socket event when the sender and receiver are connected to different server instances.
-
-Each server instance maintains a local `userSocketMap` (`{ userId → socketId }`). When the controller publishes on `chat:new-message`, every instance's sub client receives it. Each instance checks its local map — only the instance holding that socket emits. The others silently do nothing.
+Each server instance holds a local `userSocketMap` (`{ userId → socketId }`). When a message is saved, the controller publishes on `chat:new-message`. Every instance's sub client receives the event and checks its local map — only the instance holding that socket emits `newMessage` to the client. Others silently skip.
 
 The same pattern applies to `notification:new`.
 
 ### BullMQ — async notification pipeline
 
-The notification job is the only thing BullMQ is responsible for end-to-end:
+1. Controller fire-and-forgets a `send-notification` job (5 attempts, exponential backoff)
+2. Worker saves a `Notification` document to MongoDB
+3. Worker publishes on `notification:new`
+4. Correct server instance emits `notification` to the recipient's socket
 
-1. Controller fire-and-forgets a `send-notification` job (attempts: 5, exponential backoff)
-2. Worker picks it up, saves a `Notification` document to MongoDB, publishes on `notification:new`
-3. Sub client on the correct server instance emits `notification` to the recipient's socket
+The worker is a completely separate process. If it crashes, the HTTP server keeps running and jobs stay in the queue until the worker restarts.
 
-The worker runs as a completely separate process (`node src/worker.js`). If it crashes, the HTTP server keeps running and jobs stay in the queue — they will be processed when the worker restarts.
+---
 
+## Scaling notes
+
+### Testing pub/sub locally
+
+Run two server instances simultaneously to verify cross-instance message delivery:
+
+```bash
+# Terminal 1
+npm run dev        # port 5001
+
+# Terminal 2
+npm run dev:2      # port 5002
+```
+
+Open two browsers (e.g. Chrome + Edge incognito), log in as different users, and send messages. Watch both terminal logs — a message published through instance A should be received and delivered by instance B via Redis pub/sub, with no direct server-to-server communication.
+
+### Production considerations
+
+- Put a load balancer (nginx, AWS ALB) in front of multiple server instances
+- Socket.IO requires WebSocket support — disable HTTP-only polling at the LB level
+- The worker process can be scaled independently of the HTTP server
+- Redis is the single point of coordination — use Redis Cluster or a managed service (Redis Cloud, Upstash) for HA
