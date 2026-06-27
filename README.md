@@ -1,9 +1,8 @@
-## 🚀 Demo Video
+## 🎥 Project Demo
 
-🎥 **Watch Chatty in action**
+[▶ Watch Chatty Demo](https://github.com/Piyush22536/Chatty/releases/download/v1.0.0/Chatty_demo.mp4)
 
-👉 **[Chatty Demo](https://github.com/Piyush22536/Chatty/releases/tag/v1.0.0)**
-
+---
 
 ![Chatty banner](https://github.com/user-attachments/assets/2f1a1295-e935-49f3-a991-0e3760bd91ff)
 
