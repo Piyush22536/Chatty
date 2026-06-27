@@ -2,29 +2,34 @@ import { Server } from "socket.io";
 import http from "http";
 import express from "express";
 import { getSubClient } from "./pubsub.js";
-import redisClient from "./redis.js";
+import { getRedisClient } from "./redis.js";
 
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: ["http://localhost:5173"] },
+  cors: { origin: ["http://localhost:5173", "http://localhost:5174"] },
 });
 
 // Local map — only sockets connected to THIS server instance.
-// When horizontally scaled, each instance has its own partial map.
 const userSocketMap = {};
+
+let redisReady = false;
+
+export function setRedisReady() {
+  redisReady = true;
+}
 
 export function getReceiverSocketId(userId) {
   return userSocketMap[userId.toString()];
 }
 
 const ONLINE_USERS_KEY = "online_users";
-const SOCKET_MAP_KEY   = "socket_map"; // Redis hash: userId → socketId
+const SOCKET_MAP_KEY   = "socket_map";
 
 export async function clearStaleOnlineUsers() {
-  await redisClient.del(ONLINE_USERS_KEY);
-  await redisClient.del(SOCKET_MAP_KEY);
+  await getRedisClient().del(ONLINE_USERS_KEY);
+  await getRedisClient().del(SOCKET_MAP_KEY);
   console.log("Cleared stale online_users and socket_map from Redis");
 }
 
@@ -36,53 +41,53 @@ io.on("connection", async (socket) => {
 
   if (userId) {
     userSocketMap[userId] = socket.id;
-    await redisClient.sAdd(ONLINE_USERS_KEY, userId);
-    // Persist mapping so other instances can check online status
-    await redisClient.hSet(SOCKET_MAP_KEY, userId, socket.id);
+
+    if (redisReady) {
+      await getRedisClient().sAdd(ONLINE_USERS_KEY, userId);
+      await getRedisClient().hSet(SOCKET_MAP_KEY, userId, socket.id);
+    }
   }
 
-  const onlineUsers = await redisClient.sMembers(ONLINE_USERS_KEY);
-  io.emit("getOnlineUsers", onlineUsers);
+  if (redisReady) {
+    const onlineUsers = await getRedisClient().sMembers(ONLINE_USERS_KEY);
+    io.emit("getOnlineUsers", onlineUsers);
+  } else {
+    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  }
 
   socket.on("disconnect", async () => {
     if (userId) {
       delete userSocketMap[userId];
-      await redisClient.sRem(ONLINE_USERS_KEY, userId);
-      await redisClient.hDel(SOCKET_MAP_KEY, userId);
+
+      if (redisReady) {
+        await getRedisClient().sRem(ONLINE_USERS_KEY, userId);
+        await getRedisClient().hDel(SOCKET_MAP_KEY, userId);
+      }
     }
-    const onlineUsers = await redisClient.sMembers(ONLINE_USERS_KEY);
-    io.emit("getOnlineUsers", onlineUsers);
+
+    if (redisReady) {
+      const onlineUsers = await getRedisClient().sMembers(ONLINE_USERS_KEY);
+      io.emit("getOnlineUsers", onlineUsers);
+    } else {
+      io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    }
   });
 });
 
 // ---------------------------------------------------------------------------
-// Pub/Sub listeners — called once at startup.
-//
-// Two channels:
-//   "chat:new-message"  — real-time message delivery
-//   "notification:new"  — in-app notification delivery
-//
-// Each server instance receives every publish. Only the instance whose
-// local userSocketMap contains the recipient's socketId will emit.
+// Pub/Sub listeners — called once at startup after Redis is ready.
 // ---------------------------------------------------------------------------
 export async function setupPubSubListeners() {
-  // Channel 1: chat messages
   await getSubClient().subscribe("chat:new-message", (raw) => {
     const { receiverId, message } = JSON.parse(raw);
     const socketId = userSocketMap[receiverId];
-    if (socketId) {
-      io.to(socketId).emit("newMessage", message);
-    }
+    if (socketId) io.to(socketId).emit("newMessage", message);
   });
 
-  // Channel 2: notifications
   await getSubClient().subscribe("notification:new", (raw) => {
     const { recipientId, notification } = JSON.parse(raw);
     const socketId = userSocketMap[recipientId];
-    if (socketId) {
-      // "notification" event — client increments badge + shows toast
-      io.to(socketId).emit("notification", notification);
-    }
+    if (socketId) io.to(socketId).emit("notification", notification);
   });
 
   console.log("Subscribed to Redis pub/sub channels: chat:new-message, notification:new");

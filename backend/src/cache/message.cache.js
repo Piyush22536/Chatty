@@ -1,8 +1,8 @@
-import redisClient from '../lib/redis.js';
+import { getRedisClient } from '../lib/redis.js';
 
 export const getCachedMessages = async (chatKey) => {
   try {
-    const data = await redisClient.get(chatKey);
+    const data = await getRedisClient().get(chatKey);
     if (!data) return null;
     
     return JSON.parse(data);
@@ -14,7 +14,7 @@ export const getCachedMessages = async (chatKey) => {
 
 export const setCachedMessages = async (chatKey, messages) => {
   try {
-    await redisClient.set(chatKey, JSON.stringify(messages), {
+    await getRedisClient().set(chatKey, JSON.stringify(messages), {
       EX: 60, // Expires in 60 seconds
     });
   } catch (error) {

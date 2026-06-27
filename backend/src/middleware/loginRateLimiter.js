@@ -1,4 +1,4 @@
-import redisClient from "../lib/redis.js";
+import { getRedisClient } from "../lib/redis.js";
 
 // 5 attempts per 15 minutes per IP
 const MAX_TOKENS = 5;
@@ -12,7 +12,7 @@ export const loginTokenBucketLimiter = async (req, res, next) => {
 
     const key = `bucket:login:${ip}`;
 
-    const bucket = await redisClient.get(key);
+    const bucket = await getRedisClient().get(key);
 
     let tokens = MAX_TOKENS;
     let lastRefill = Date.now();
@@ -39,7 +39,7 @@ export const loginTokenBucketLimiter = async (req, res, next) => {
     // consume 1 token
     tokens -= 1;
 
-    await redisClient.set(
+    await getRedisClient().set(
       key,
       JSON.stringify({
         tokens,

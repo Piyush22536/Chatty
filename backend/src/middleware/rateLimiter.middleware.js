@@ -1,4 +1,4 @@
-import redisClient from "../lib/redis.js";
+import { getRedisClient } from "../lib/redis.js";
 
 //tocken bucket algo: 
 
@@ -10,7 +10,7 @@ export const tokenBucketLimiter = async (req, res, next) => {
     const userId = req.user._id.toString();
     const key = `bucket:${userId}`;
 
-    const bucket = await redisClient.get(key);
+    const bucket = await getRedisClient().get(key);
 
     let tokens = MAX_TOKENS;
     let lastRefill = Date.now();
@@ -35,7 +35,7 @@ export const tokenBucketLimiter = async (req, res, next) => {
 
     tokens -= 1;
 
-    await redisClient.set(
+    await getRedisClient().set(
       key,
       JSON.stringify({
         tokens,

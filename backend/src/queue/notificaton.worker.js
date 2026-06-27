@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import Notification from "../models/notification.model.js";
-import { bullMQConnection } from "../lib/redis.js";
+import { getBullMQConnection } from "../lib/redis.js";
 import { getPubClient } from "../lib/pubsub.js";
 
 // ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ export const notificationWorker = new Worker(
     }
   },
   {
-    connection: bullMQConnection,
+    connection: getBullMQConnection(),
     concurrency: 15,
   }
 );

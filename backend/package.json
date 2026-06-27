@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon --import ./src/env.js src/index.js",
+    "dev:2": "cross-env PORT=5002 nodemon --import ./src/env.js src/index.js",
     "start": "node --import ./src/env.js src/index.js",
     "start:worker": "node --import ./src/env.js src/worker.js"
   },
@@ -27,6 +28,7 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.7"
   }
 }

@@ -2,7 +2,7 @@ import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getCachedMessages, setCachedMessages } from "../cache/message.cache.js";
-import redisClient from "../lib/redis.js";
+import { getRedisClient } from "../lib/redis.js";
 import { getPubClient } from "../lib/pubsub.js";
 import { notificationQueue } from "../queue/notification.queue.js";
 
@@ -94,7 +94,7 @@ export const sendMessage = async (req, res) => {
     const cacheKey = chatCacheKey(sender._id, receiverId);
 
     // 3. Invalidate cache so next GET fetches fresh data
-    await redisClient.del(cacheKey);
+    await getRedisClient().del(cacheKey);
 
     // 4. Publish real-time event (critical — receiver won't get instant
     //    delivery if this fails, so we keep it in the awaited path)
