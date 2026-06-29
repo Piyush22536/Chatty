@@ -225,9 +225,17 @@ npm run dev
 cd backend
 npm run start:worker
 
-# Terminal 3 — Frontend dev server (port 5173)
+# Terminal 3 — Frontend → Server :5001 (port 5173)
 cd frontend
 npm run dev
+
+# Terminal 4 — HTTP server (port 5002)  [optional — for pub/sub testing]
+cd backend
+npm run dev:2
+
+# Terminal 5 — Frontend → Server :5002 (port 5174)  [optional — for pub/sub testing]
+cd frontend
+npx vite --config vite.server2.config.js
 ```
 
 `backend/package.json` scripts:
@@ -242,7 +250,7 @@ npm run dev
 }
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:5173` in your browser. For pub/sub testing, open `http://localhost:5174` in a second browser (or incognito) logged in as a different user.
 
 ---
 
