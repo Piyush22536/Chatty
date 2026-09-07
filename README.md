@@ -1,6 +1,6 @@
 ## 🎥 Project Demo
 
-[▶ Watch Chatty Demo](https://github.com/Piyush22536/Chatty/releases/download/v1.0.0/Chatty_demo.mp4)
+[▶ Watch Chatty Demo](https://drive.google.com/file/d/1XMnp4qRCOO0GXVg0Mg1pDPh8NEtnqkZY/view?usp=sharing)
 
 ---
 
