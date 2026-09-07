@@ -116,3 +116,24 @@ export const checkAuth = (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/fcm-token
+// Saves the browser's FCM registration token for the authenticated user so
+// the notification worker can target their device.
+// ---------------------------------------------------------------------------
+export const saveFcmToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+
+    if (!fcmToken) {
+      return res.status(400).json({ message: "fcmToken is required" });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, { fcmToken });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.log("Error in saveFcmToken:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

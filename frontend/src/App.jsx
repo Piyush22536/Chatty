@@ -12,16 +12,8 @@ import ProfilePage from "./pages/ProfilePage";
 
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
-import { useNotifications } from "./hooks/useNotifications";
 
-// ---------------------------------------------------------------------------
-// Inner component — only rendered when authUser is available.
-// useNotifications must run after socket is established.
-// ---------------------------------------------------------------------------
-function AuthenticatedApp({ authUser }) {
-  // 🔔 Registers socket listener + fetches notifications on mount
-  useNotifications();
-
+function AuthenticatedApp() {
   return (
     <>
       <Navbar />
@@ -55,7 +47,7 @@ const App = () => {
   return (
     <div data-theme={theme}>
       {authUser ? (
-        <AuthenticatedApp authUser={authUser} />
+        <AuthenticatedApp />
       ) : (
         <>
           <Navbar />

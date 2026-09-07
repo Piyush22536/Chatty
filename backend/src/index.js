@@ -13,7 +13,6 @@ import { app, server, setupPubSubListeners, clearStaleOnlineUsers, setRedisReady
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
-import notificationRoutes from "./routes/notification.route.js";
 
 const PORT = process.env.PORT || 5001;
 const __dirname = path.resolve();
@@ -27,7 +26,7 @@ app.use(cors({
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/notifications", notificationRoutes);
+
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));

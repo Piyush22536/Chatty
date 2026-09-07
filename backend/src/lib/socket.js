@@ -84,13 +84,7 @@ export async function setupPubSubListeners() {
     if (socketId) io.to(socketId).emit("newMessage", message);
   });
 
-  await getSubClient().subscribe("notification:new", (raw) => {
-    const { recipientId, notification } = JSON.parse(raw);
-    const socketId = userSocketMap[recipientId];
-    if (socketId) io.to(socketId).emit("notification", notification);
-  });
-
-  console.log("Subscribed to Redis pub/sub channels: chat:new-message, notification:new");
+  console.log("Subscribed to Redis pub/sub channels: chat:new-message");
 }
 
 export { io, app, server };
